@@ -1,0 +1,78 @@
+name: build-editlux-linux
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+env:
+  IMAGE_NAME: mltframework/shotcut-build:qt6.10.3-ubuntu22.04
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Build portable Editlux
+        run: |
+          VERSION="0.1.$(date +'%y%m%d')"
+          echo "$VERSION" > VERSION
+          {
+            echo 'CLEANUP=0'
+            echo "SHOTCUT_VERSION=\"$VERSION\""
+            echo 'SHOTCUT_HEAD=0'
+            echo "SHOTCUT_REVISION=\"$GITHUB_SHA\""
+            echo 'SHOTCUT_REPO=/root/editlux-source'
+            echo 'ENABLE_WHISPERCPP=0'
+            echo 'ENABLE_RNNOISE=0'
+          } > scripts/build-shotcut.conf
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/scripts:/root/shotcut" \
+            -v "$GITHUB_WORKSPACE:/root/editlux-source:ro" \
+            "$IMAGE_NAME"
+          mv scripts/editlux.txz "scripts/editlux-linux-x86_64-$VERSION.txz"
+          mv scripts/src.txz "scripts/editlux-source-$VERSION.txz"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: editlux-linux-portable
+          path: |
+            scripts/editlux-linux-x86_64-*.txz
+            VERSION
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: editlux-source
+          path: scripts/editlux-source-*.txz
+
+  appimage:
+    runs-on: ubuntu-latest
+    needs: portable
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v6
+        with:
+          name: editlux-linux-portable
+          path: dist
+
+      - name: Package AppImage
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y desktop-file-utils libfuse2
+          cp dist/scripts/editlux-linux-x86_64-*.txz scripts/
+          mkdir -p packaging/linux/Editlux
+          cp dist/VERSION packaging/linux/Editlux/VERSION
+          cd packaging/linux
+          export PKG2AICOMMIT=1eceb306077e51b991e987690b364e11971b44b3
+          wget -q "https://raw.githubusercontent.com/probonopd/AppImages/${PKG2AICOMMIT}/pkg2appimage"
+          bash -ex pkg2appimage appimage/appimage.yml
+          VERSION=$(cat Editlux/VERSION)
+          mv out/*.AppImage "out/editlux-linux-x86_64-$VERSION.AppImage"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: editlux-linux-appimage
+          path: packaging/linux/out/editlux-linux-x86_64-*.AppImage

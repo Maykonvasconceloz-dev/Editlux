@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Name=Editlux
+GenericName=Video Editor
+GenericName[pt_BR]=Editor de vídeo
+GenericName[es]=Editor de vídeo
+GenericName[de]=Video-Bearbeitungsprogramm
+Comment=Native, offline and open-source video editor for Linux.
+Comment[pt_BR]=Editor de vídeo nativo, offline e de código aberto para Linux.
+Comment[es]=Editor de vídeo nativo, sin conexión y de código abierto para Linux.
+Comment[de]=Nativer, offline nutzbarer Open-Source-Videoeditor für Linux.
+Exec=editlux %F
+Icon=io.github.editlux.Editlux
+Terminal=false
+Categories=AudioVideo;Video;AudioVideoEditing;
+Keywords=video;audio;editing;timeline;mlt;ffmpeg;youtube;instagram;reels;
+MimeType=application/vnd.mlt+xml;application/ogg;audio/ogg;video/ogg;audio/flac;audio/mpeg;audio/mp4;video/mp4;video/quicktime;audio/x-matroska;video/x-matroska;video/webm;audio/webm;audio/wav;audio/x-wav;video/x-msvideo;image/png;image/jpeg;image/webp;
+StartupWMClass=Editlux

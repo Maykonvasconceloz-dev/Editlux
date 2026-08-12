@@ -1,0 +1,28 @@
+.TH EDITLUX "1" "August 2026" "Editlux" "User Commands"
+.SH NAME
+editlux \- native video editor for Linux
+.SH SYNOPSIS
+.B editlux
+[\fIoptions\fR] [\fIFILE\fR]...
+.SH DESCRIPTION
+Editlux is a local, open-source non-linear video editor based on Shotcut, MLT,
+Qt and FFmpeg. It supports horizontal 16:9 and vertical 9:16 projects.
+.SH OPTIONS
+.TP
+.BR \-h , " " \-\-help
+Display command-line help.
+.TP
+.BR \-v , " " \-\-version
+Display version information.
+.TP
+.B \-\-fullscreen
+Fill the screen with the Editlux window.
+.TP
+.BI \-\-appdata " directory"
+Use a custom directory for local configuration and data.
+.TP
+.BI \-\-SDL_AUDIODRIVER " driver"
+Select the Linux audio driver, such as alsa, pipewire or pulseaudio.
+.SH LICENSE
+GNU General Public License version 3 or later. Editlux is based on Shotcut and
+preserves its original copyright and license notices.

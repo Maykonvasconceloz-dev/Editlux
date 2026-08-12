@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.editlux.Editlux</id>
+  <launchable type="desktop-id">io.github.editlux.Editlux.desktop</launchable>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Editlux</name>
+  <summary>Native and offline video editor for Linux</summary>
+  <summary xml:lang="pt-BR">Editor de vídeo nativo e offline para Linux</summary>
+  <description>
+    <p>
+      Editlux is a native Linux video editor for YouTube, Instagram and other local
+      production workflows. It provides multi-track editing, effects, transitions,
+      keyframes, subtitles, proxy media and local export through MLT and FFmpeg.
+    </p>
+    <p>
+      Editlux is an independent GPLv3 fork based on Shotcut. It preserves the
+      original Shotcut and third-party copyright notices while using its own name,
+      visual identity and interface defaults.
+    </p>
+  </description>
+  <developer id="io.github.editlux">
+    <name>Editlux contributors</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@SHOTCUT_VERSION@" date="@SHOTCUT_DATE@"/>
+  </releases>
+</component>

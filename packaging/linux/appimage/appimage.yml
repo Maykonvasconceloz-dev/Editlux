@@ -1,0 +1,16 @@
+app: Editlux
+verbose: true
+
+#ingredients:
+#  dist: focal
+#  sources:
+#    - deb http://us.archive.ubuntu.com/ubuntu/ focal main universe
+#  script:
+#    - echo "multiarch-support" >> excludedeblist
+                                                                                                                                         
+script:
+  - tar -xJ -C usr/bin --strip=1 -f ../../../../scripts/editlux-linux-x86_64-*.txz
+  - cp -p ../../../../icons/editlux-logo-64.png editlux.png
+  - cp -p ../../../../icons/editlux-logo-64.png io.github.editlux.Editlux.png
+  - cp -p ../../../../packaging/linux/io.github.editlux.Editlux.desktop editlux.desktop
+  - desktop-file-edit --set-key=Exec --set-value=editlux editlux.desktop
