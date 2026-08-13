@@ -27,7 +27,7 @@ jobs:
             echo "SHOTCUT_REVISION=\"$GITHUB_SHA\""
             echo "SHOTCUT_REPO=https://github.com/$GITHUB_REPOSITORY.git"
             echo 'ENABLE_WHISPERCPP=0'
-            echo 'ENABLE_RNNOISE=0'
+            echo 'ENABLE_RNNOISE=1'
           } > scripts/build-shotcut.conf
           docker run --rm \
             -v "$GITHUB_WORKSPACE/scripts:/root/shotcut" \
