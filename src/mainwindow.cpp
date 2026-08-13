@@ -99,6 +99,7 @@
 #include <QClipboard>
 #include <QDirIterator>
 #include <QFileDialog>
+#include <QFontDatabase>
 #include <QHelpEvent>
 #include <QImageReader>
 #include <QJSEngine>
@@ -138,7 +139,7 @@ static bool eventDebugCallback(void **data)
 static constexpr int AUTOSAVE_TIMEOUT_MS = 60000;
 // Bump kDockLayoutVersion whenever a new dock is added to setupAndConnectDocks().
 // This triggers a one-time re-tabification for users upgrading from an older saved state.
-static constexpr int kDockLayoutVersion = 1;
+static constexpr int kDockLayoutVersion = 2;
 static constexpr char kReservedLayoutPrefix[] = "__%1";
 static constexpr char kLayoutSwitcherName[] = "layoutSwitcherGrid";
 static QRegularExpression kBackupFileRegex("^(.+) "
@@ -191,30 +192,14 @@ MainWindow::MainWindow()
 
     // Create the UI.
     ui->setupUi(this);
+    setMinimumSize(1100, 650);
     setDockNestingEnabled(true);
     const auto highlight = palette().highlight().color();
     setStyleSheet(QString("QMainWindow::separator {"
-                          "  width: 5px;"
+                          "  width: 4px;"
                           "}"
                           "QMainWindow::separator:hover {"
                           "  background-color: rgba(%1, %2, %3, 127);"
-                          "}"
-                          "QToolBar#mainToolBar {"
-                          "  border: 0;"
-                          "  border-bottom: 1px solid palette(mid);"
-                          "  spacing: 2px;"
-                          "  padding: 3px 6px;"
-                          "}"
-                          "QToolBar#mainToolBar QToolButton {"
-                          "  border-radius: 5px;"
-                          "  padding: 4px 7px;"
-                          "}"
-                          "QToolBar#mainToolBar QToolButton:hover {"
-                          "  background: palette(alternate-base);"
-                          "}"
-                          "QTabBar::tab {"
-                          "  min-height: 24px;"
-                          "  padding: 4px 10px;"
                           "}")
                       .arg(highlight.red())
                       .arg(highlight.green())
@@ -452,22 +437,42 @@ void MainWindow::setupEditluxToolbar()
     }
 
     ui->mainToolBar->clear();
-    ui->mainToolBar->setIconSize(QSize(22, 22));
+    ui->mainToolBar->setIconSize(QSize(19, 19));
     ui->mainToolBar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    ui->mainToolBar->setMinimumHeight(58);
+    ui->mainToolBar->setMinimumHeight(54);
+    ui->mainToolBar->setMaximumHeight(58);
 
-    auto *brand = new QLabel(QStringLiteral("<b>Editlux</b>"), ui->mainToolBar);
-    brand->setAlignment(Qt::AlignCenter);
-    brand->setMinimumWidth(82);
-    brand->setStyleSheet(QStringLiteral("font-size: 17px; padding: 0 8px;"));
+    auto *brand = new QWidget(ui->mainToolBar);
+    brand->setObjectName(QStringLiteral("editluxBrand"));
+    brand->setMinimumWidth(112);
+    auto *brandLayout = new QHBoxLayout(brand);
+    brandLayout->setContentsMargins(8, 0, 12, 0);
+    brandLayout->setSpacing(7);
+    auto *brandIcon = new QLabel(brand);
+    brandIcon->setPixmap(QIcon(QStringLiteral(":/icons/editlux-logo-64.png")).pixmap(26, 26));
+    auto *brandText = new QLabel(QStringLiteral("Editlux"), brand);
+    brandText->setObjectName(QStringLiteral("editluxBrandText"));
+    brandLayout->addWidget(brandIcon);
+    brandLayout->addWidget(brandText);
     ui->mainToolBar->addWidget(brand);
 
+    auto *categoryGroup = new QActionGroup(ui->mainToolBar);
+    categoryGroup->setExclusive(true);
+
     const auto addCategory =
-        [this](const QString &text, const QIcon &icon, const std::function<void()> &handler) {
+        [this, categoryGroup](const QString &text,
+                              const QIcon &icon,
+                              const std::function<void()> &handler) {
             auto *action = new QAction(icon, text, this);
+            action->setCheckable(true);
+            categoryGroup->addAction(action);
             action->setToolTip(text);
             connect(action, &QAction::triggered, this, [handler](bool) { handler(); });
             ui->mainToolBar->addAction(action);
+            if (auto *button = qobject_cast<QToolButton *>(
+                    ui->mainToolBar->widgetForAction(action))) {
+                button->setProperty("editluxCategory", true);
+            }
             return action;
         };
     const auto showLeftDock = [this](QDockWidget *dock) {
@@ -476,21 +481,13 @@ void MainWindow::setupEditluxToolbar()
         dock->show();
         dock->raise();
     };
-    const auto showRightDock = [this](QDockWidget *dock) {
-        if (width() < 1280) {
-            m_playlistDock->hide();
-            m_filesDock->hide();
-            m_elementsDock->hide();
-            m_subtitlesDock->hide();
-        }
-        dock->show();
-        dock->raise();
-    };
 
-    addCategory(tr("Media"),
-                QIcon::fromTheme("view-media-playlist",
-                                 QIcon(":/icons/oxygen/32x32/actions/view-media-playlist.png")),
-                [this, showLeftDock]() { showLeftDock(m_playlistDock); });
+    auto *mediaAction = addCategory(
+        tr("Media"),
+        QIcon::fromTheme("view-media-playlist",
+                         QIcon(":/icons/oxygen/32x32/actions/view-media-playlist.png")),
+        [this, showLeftDock]() { showLeftDock(m_playlistDock); });
+    mediaAction->setChecked(true);
     addCategory(tr("Audio"),
                 QIcon::fromTheme("speaker", QIcon(":/icons/oxygen/32x32/actions/speaker.png")),
                 [this, showLeftDock]() {
@@ -514,10 +511,10 @@ void MainWindow::setupEditluxToolbar()
     addCategory(tr("Effects"),
                 QIcon::fromTheme("view-filter",
                                  QIcon(":/icons/oxygen/32x32/actions/view-filter.png")),
-                [this, showRightDock]() {
+                [this, showLeftDock]() {
                     m_filterController->metadataModel()->setFilter(MetadataModel::VideoFilter);
                     m_filterController->metadataModel()->setSearch(QString());
-                    showRightDock(m_filtersDock);
+                    showLeftDock(m_filtersDock);
                 });
     addCategory(tr("Transitions"),
                 QIcon::fromTheme("insert-link",
@@ -532,74 +529,103 @@ void MainWindow::setupEditluxToolbar()
     addCategory(tr("Filters"),
                 QIcon::fromTheme("color-picker",
                                  QIcon(":/icons/oxygen/32x32/actions/color-picker.png")),
-                [this, showRightDock]() {
+                [this, showLeftDock]() {
                     m_filterController->metadataModel()->setFilter(MetadataModel::VideoFilter);
                     m_filterController->metadataModel()->setSearch(QString());
-                    showRightDock(m_filtersDock);
+                    showLeftDock(m_filtersDock);
                 });
     addCategory(tr("Adjustments"),
                 QIcon::fromTheme("configure", QIcon(":/icons/oxygen/32x32/actions/chronometer.png")),
-                [this, showRightDock]() {
+                [this, showLeftDock]() {
                     m_filterController->metadataModel()->setFilter(MetadataModel::VideoFilter);
                     m_filterController->metadataModel()->setSearch(QStringLiteral("#color"));
-                    showRightDock(m_filtersDock);
+                    showLeftDock(m_filtersDock);
                 });
 
     auto *spacer = new QWidget(ui->mainToolBar);
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     ui->mainToolBar->addWidget(spacer);
-    if (undoAction)
+    if (undoAction) {
         ui->mainToolBar->addAction(undoAction);
-    if (redoAction)
+        if (auto *button = qobject_cast<QToolButton *>(
+                ui->mainToolBar->widgetForAction(undoAction))) {
+            button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+            button->setFixedSize(34, 34);
+        }
+    }
+    if (redoAction) {
         ui->mainToolBar->addAction(redoAction);
+        if (auto *button = qobject_cast<QToolButton *>(
+                ui->mainToolBar->widgetForAction(redoAction))) {
+            button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+            button->setFixedSize(34, 34);
+        }
+    }
     ui->mainToolBar->addAction(ui->actionEncode);
     if (auto *button = qobject_cast<QToolButton *>(
             ui->mainToolBar->widgetForAction(ui->actionEncode))) {
+        button->setObjectName(QStringLiteral("editluxExportButton"));
         button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-        button->setStyleSheet(QStringLiteral(
-            "QToolButton { background:#00a6d8; color:#ffffff; border-radius:6px; "
-            "font-weight:600; padding:7px 12px; } QToolButton:hover { background:#00b7eb; }"));
     }
+
+    auto *resetInterface = new QAction(tr("Reset") + QStringLiteral(" ") + tr("Layout"), this);
+    resetInterface->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+0")));
+    connect(resetInterface, &QAction::triggered, this, [this]() {
+        applyEditluxDefaultLayout();
+        Settings.setWindowState(saveState());
+        Settings.setDockLayoutVersion(kDockLayoutVersion);
+    });
+    ui->menuView->addSeparator();
+    ui->menuView->addAction(resetInterface);
 }
 
 void MainWindow::applyEditluxDefaultLayout()
 {
-    setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks
-                   | QMainWindow::AllowTabbedDocks | QMainWindow::GroupedDragging);
+    setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks);
     setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
     setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
     setTabPosition(Qt::BottomDockWidgetArea, QTabWidget::North);
     setCorner(Qt::BottomLeftCorner, Qt::BottomDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::BottomDockWidgetArea);
 
-    for (auto *dock : findChildren<QDockWidget *>())
+    for (auto *dock : findChildren<QDockWidget *>()) {
         dock->hide();
+        dock->setFeatures(QDockWidget::DockWidgetClosable);
+    }
 
     const QList<QDockWidget *> leftDocks{m_playlistDock,
                                          m_filesDock,
                                          m_elementsDock,
-                                         m_subtitlesDock};
-    const QList<QDockWidget *> rightDocks{m_propertiesDock, m_filtersDock, m_encodeDock};
+                                         m_subtitlesDock,
+                                         m_filtersDock};
+    const QList<QDockWidget *> rightDocks{m_propertiesDock, m_encodeDock};
     for (auto *dock : leftDocks) {
         removeDockWidget(dock);
+        dock->setAllowedAreas(Qt::LeftDockWidgetArea);
         addDockWidget(Qt::LeftDockWidgetArea, dock);
     }
     tabifyDockWidget(m_playlistDock, m_filesDock);
     tabifyDockWidget(m_filesDock, m_elementsDock);
     tabifyDockWidget(m_elementsDock, m_subtitlesDock);
+    tabifyDockWidget(m_subtitlesDock, m_filtersDock);
 
     for (auto *dock : rightDocks) {
         removeDockWidget(dock);
+        dock->setAllowedAreas(Qt::RightDockWidgetArea);
         addDockWidget(Qt::RightDockWidgetArea, dock);
     }
-    tabifyDockWidget(m_propertiesDock, m_filtersDock);
-    tabifyDockWidget(m_filtersDock, m_encodeDock);
+    tabifyDockWidget(m_propertiesDock, m_encodeDock);
 
     removeDockWidget(m_timelineDock);
     removeDockWidget(m_keyframesDock);
+    m_timelineDock->setAllowedAreas(Qt::BottomDockWidgetArea);
+    m_keyframesDock->setAllowedAreas(Qt::BottomDockWidgetArea);
     addDockWidget(Qt::BottomDockWidgetArea, m_timelineDock);
     addDockWidget(Qt::BottomDockWidgetArea, m_keyframesDock);
     tabifyDockWidget(m_timelineDock, m_keyframesDock);
+
+    m_playlistDock->setWindowTitle(tr("Media"));
+    m_propertiesDock->setWindowTitle(tr("Properties"));
 
     m_playlistDock->show();
     m_propertiesDock->show();
@@ -607,11 +633,11 @@ void MainWindow::applyEditluxDefaultLayout()
     m_playlistDock->raise();
     m_propertiesDock->raise();
     m_timelineDock->raise();
-    m_timelineDock->setMinimumHeight(200);
+    m_timelineDock->setMinimumHeight(220);
 
     const auto resizePanels = [this]() {
-        resizeDocks({m_playlistDock, m_propertiesDock}, {260, 300}, Qt::Horizontal);
-        resizeDocks({m_timelineDock}, {270}, Qt::Vertical);
+        resizeDocks({m_playlistDock, m_propertiesDock}, {250, 290}, Qt::Horizontal);
+        resizeDocks({m_timelineDock}, {280}, Qt::Vertical);
     };
     resizePanels();
     QTimer::singleShot(0, this, resizePanels);
@@ -2928,16 +2954,16 @@ void MainWindow::readWindowSettings()
     Settings.setWindowStateDefault(saveState());
     Settings.sync();
     if (!Settings.windowGeometry().isEmpty()) {
-        restoreState(Settings.windowState());
         restoreGeometry(Settings.windowGeometry());
-        // Re-tabify docks that were added after the user's saved layout version.
         if (Settings.dockLayoutVersion() < kDockLayoutVersion) {
-            tabifyDockWidget(m_recentDock, m_filesDock);
-            tabifyDockWidget(m_filesDock, m_elementsDock);
+            applyEditluxDefaultLayout();
             Settings.setDockLayoutVersion(kDockLayoutVersion);
+        } else {
+            restoreState(Settings.windowState());
         }
     } else {
         applyEditluxDefaultLayout();
+        Settings.setDockLayoutVersion(kDockLayoutVersion);
     }
     LOG_DEBUG() << "end";
 }
@@ -4382,6 +4408,21 @@ void MainWindow::changeTheme(const QString &theme)
     LOG_DEBUG() << "Available styles:" << QStyleFactory::keys();
     auto mytheme = theme;
 
+    QFont interfaceFont = QApplication::font();
+    const QStringList preferredFonts{QStringLiteral("Inter"),
+                                     QStringLiteral("Noto Sans"),
+                                     QStringLiteral("Ubuntu"),
+                                     QStringLiteral("DejaVu Sans")};
+    const auto installedFonts = QFontDatabase::families();
+    for (const auto &family : preferredFonts) {
+        if (installedFonts.contains(family)) {
+            interfaceFont.setFamily(family);
+            break;
+        }
+    }
+    interfaceFont.setPointSizeF(10.0);
+    QApplication::setFont(interfaceFont);
+
 #if !defined(SHOTCUT_THEME)
     // Workaround Quick Controls not using our custom palette - temporarily?
     std::unique_ptr<QStyle> style{QStyleFactory::create("fusion")};
@@ -4403,39 +4444,89 @@ void MainWindow::changeTheme(const QString &theme)
     if (mytheme == kThemeDark) {
         QApplication::setStyle(kStyleFusion);
         QPalette palette;
-        palette.setColor(QPalette::Window, QColor("#15171c"));
-        palette.setColor(QPalette::WindowText, QColor("#e7ebf0"));
-        palette.setColor(QPalette::Base, QColor("#0f1115"));
-        palette.setColor(QPalette::AlternateBase, QColor("#22262d"));
-        palette.setColor(QPalette::Highlight, QColor("#00a6d8"));
-        palette.setColor(QPalette::HighlightedText, Qt::white);
-        palette.setColor(QPalette::ToolTipBase, palette.color(QPalette::Highlight));
+        palette.setColor(QPalette::Window, QColor("#1b1a19"));
+        palette.setColor(QPalette::WindowText, QColor("#f2efeb"));
+        palette.setColor(QPalette::Base, QColor("#141312"));
+        palette.setColor(QPalette::AlternateBase, QColor("#242220"));
+        palette.setColor(QPalette::Highlight, QColor("#22b8aa"));
+        palette.setColor(QPalette::HighlightedText, QColor("#071b18"));
+        palette.setColor(QPalette::ToolTipBase, QColor("#2b2926"));
         palette.setColor(QPalette::ToolTipText, palette.color(QPalette::WindowText));
         palette.setColor(QPalette::Text, palette.color(QPalette::WindowText));
-        palette.setColor(QPalette::BrightText, Qt::red);
-        palette.setColor(QPalette::Button, palette.color(QPalette::Window));
+        palette.setColor(QPalette::BrightText, QColor("#ff826c"));
+        palette.setColor(QPalette::Button, QColor("#242220"));
         palette.setColor(QPalette::ButtonText, palette.color(QPalette::WindowText));
-        palette.setColor(QPalette::Link, palette.color(QPalette::Highlight).lighter());
+        palette.setColor(QPalette::Light, QColor("#45403b"));
+        palette.setColor(QPalette::Midlight, QColor("#3a3632"));
+        palette.setColor(QPalette::Mid, QColor("#34312e"));
+        palette.setColor(QPalette::Dark, QColor("#11100f"));
+        palette.setColor(QPalette::Shadow, QColor("#080807"));
+        palette.setColor(QPalette::Link, QColor("#52d3c6"));
         palette.setColor(QPalette::LinkVisited, palette.color(QPalette::Highlight));
-        palette.setColor(QPalette::PlaceholderText, palette.color(QPalette::Text).darker());
+        palette.setColor(QPalette::PlaceholderText, QColor("#8e8881"));
         palette.setColor(QPalette::Disabled, QPalette::Base, palette.color(QPalette::Base).darker());
-        palette.setColor(QPalette::Disabled, QPalette::Text, palette.color(QPalette::Text).darker());
-        palette.setColor(QPalette::Disabled, QPalette::ButtonText, Qt::darkGray);
+        palette.setColor(QPalette::Disabled, QPalette::Text, QColor("#706b65"));
+        palette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor("#706b65"));
         palette.setColor(QPalette::Disabled, QPalette::Light, Qt::transparent);
         QApplication::setPalette(palette);
         qApp->setStyleSheet(QStringLiteral(
-            "QTabBar::tab { background: #232323; color: #aaaaaa; padding: 4px 8px;"
-            " border: 1px solid #1a1a1a; }"
-            "QTabBar::tab:top { border-bottom: none;"
-            " border-top-left-radius: 4px; border-top-right-radius: 4px; }"
-            "QTabBar::tab:bottom { border-top: none;"
-            " border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; }"
-            "QTabBar::tab:selected { background: #323232; color: #dcdcdc; }"
-            "QTabBar::tab:top:selected { background: #404040; border-top: 2px solid #175c76; }"
-            "QTabBar::tab:bottom:selected { border-bottom: 2px solid #175c76; }"
-            "QTabBar::tab:hover:!selected { background: #2a2a2a; }"
-            "QTabBar::tab:top:!selected { margin-top: 2px; }"
-            "QTabBar::tab:bottom:!selected { margin-bottom: 2px; }"));
+            "QMainWindow, QDialog { background: #1b1a19; }"
+            "QMenuBar { background: #151412; color: #cfc9c2; border-bottom: 1px solid #2c2926; }"
+            "QMenuBar::item { padding: 5px 9px; border-radius: 4px; }"
+            "QMenuBar::item:selected { background: #292724; color: #f2efeb; }"
+            "QMenu { background: #211f1d; color: #e8e3dd; border: 1px solid #3a3632;"
+            " padding: 5px; }"
+            "QMenu::item { padding: 7px 28px 7px 10px; border-radius: 4px; }"
+            "QMenu::item:selected { background: #2b3936; color: #f2efeb; }"
+            "QMenu::separator { height: 1px; background: #3a3632; margin: 5px 8px; }"
+            "QToolBar#mainToolBar { background: #191817; border: 0;"
+            " border-bottom: 1px solid #34312e; spacing: 2px; padding: 2px 7px; }"
+            "QWidget#editluxBrand { background: transparent; border-right: 1px solid #34312e; }"
+            "QLabel#editluxBrandText { color: #f7f3ee; font-size: 16px; font-weight: 700; }"
+            "QToolButton { color: #cfc9c2; background: transparent; border: 1px solid transparent;"
+            " border-radius: 6px; padding: 3px; }"
+            "QToolButton:hover { background: #292724; color: #f7f3ee; }"
+            "QToolButton:pressed { background: #302d2a; }"
+            "QToolButton:checked { background: #293b38; color: #62d9ce; border-color: #31534e; }"
+            "QToolButton[editluxCategory=\"true\"] { min-width: 43px; padding: 3px 5px; }"
+            "QToolButton#editluxExportButton { min-width: 92px; background: #22b8aa; color: #071b18;"
+            " border: 0; border-radius: 7px; font-weight: 700; padding: 8px 13px; margin-left: 5px; }"
+            "QToolButton#editluxExportButton:hover { background: #42cbbd; }"
+            "QDockWidget { color: #ddd7d0; font-weight: 600; }"
+            "QDockWidget::title { background: #211f1d; border-bottom: 1px solid #34312e;"
+            " padding: 7px 8px; text-align: left; }"
+            "QTabWidget::pane { border: 1px solid #34312e; background: #1b1a19; }"
+            "QTabBar::tab { background: #1d1c1a; color: #99928b; padding: 7px 11px;"
+            " border: 0; border-bottom: 2px solid transparent; }"
+            "QTabBar::tab:selected { background: #242220; color: #f2efeb;"
+            " border-bottom-color: #22b8aa; }"
+            "QTabBar::tab:hover:!selected { background: #292724; color: #d8d2cb; }"
+            "QPushButton { background: #2a2825; color: #eee9e3; border: 1px solid #403b36;"
+            " border-radius: 6px; padding: 6px 12px; }"
+            "QPushButton:hover { background: #34312d; border-color: #575049; }"
+            "QPushButton:pressed { background: #22201e; }"
+            "QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {"
+            " background: #141312; color: #f2efeb; border: 1px solid #3b3733;"
+            " border-radius: 5px; padding: 5px 7px; selection-background-color: #22b8aa;"
+            " selection-color: #071b18; }"
+            "QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus,"
+            " QDoubleSpinBox:focus, QComboBox:focus { border-color: #22b8aa; }"
+            "QComboBox::drop-down { border: 0; width: 24px; }"
+            "QListView, QTreeView, QTableView { background: #141312; alternate-background-color: #1d1b1a;"
+            " border: 0; outline: 0; }"
+            "QAbstractItemView::item { padding: 4px; }"
+            "QAbstractItemView::item:selected { background: #2b3d39; color: #f2efeb; }"
+            "QHeaderView::section { background: #242220; color: #cfc9c2; border: 0;"
+            " border-right: 1px solid #34312e; padding: 6px; }"
+            "QScrollBar:vertical { background: #181715; width: 10px; margin: 0; }"
+            "QScrollBar::handle:vertical { background: #48433e; min-height: 28px; border-radius: 5px; }"
+            "QScrollBar::handle:vertical:hover { background: #5a544e; }"
+            "QScrollBar:horizontal { background: #181715; height: 10px; margin: 0; }"
+            "QScrollBar::handle:horizontal { background: #48433e; min-width: 28px; border-radius: 5px; }"
+            "QScrollBar::handle:horizontal:hover { background: #5a544e; }"
+            "QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }"
+            "QToolTip { background: #2b2926; color: #f2efeb; border: 1px solid #4a4540;"
+            " padding: 5px 7px; }"));
         QIcon::setThemeName(kThemeDark);
         ::qputenv("QT_QUICK_CONTROLS_CONF", ":/resources/qtquickcontrols2-dark.conf");
     } else if (mytheme == "light") {
@@ -6947,65 +7038,14 @@ void MainWindow::on_actionProxyConfigureHardware_triggered()
 
 void MainWindow::updateLayoutSwitcher()
 {
-    if (Settings.textUnderIcons() && !Settings.smallIcons()) {
-        auto layoutSwitcher = findChild<QWidget *>(kLayoutSwitcherName);
-        if (layoutSwitcher) {
-            layoutSwitcher->show();
-            for (const auto &child : layoutSwitcher->findChildren<QToolButton *>()) {
-                child->show();
-            }
-        } else {
-            layoutSwitcher = new QWidget;
-            layoutSwitcher->setObjectName(kLayoutSwitcherName);
-            auto layoutGrid = new QGridLayout(layoutSwitcher);
-            layoutGrid->setContentsMargins(0, 0, 0, 0);
-            ui->mainToolBar->insertWidget(ui->dummyAction, layoutSwitcher);
-            auto button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutLogging);
-            layoutGrid->addWidget(button, 0, 0, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutEditing);
-            layoutGrid->addWidget(button, 0, 1, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutEffects);
-            layoutGrid->addWidget(button, 0, 2, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutColor);
-            layoutGrid->addWidget(button, 1, 0, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutAudio);
-            layoutGrid->addWidget(button, 1, 1, Qt::AlignCenter);
-            button = new QToolButton;
-            button->setAutoRaise(true);
-            button->setDefaultAction(ui->actionLayoutPlayer);
-            layoutGrid->addWidget(button, 1, 2, Qt::AlignCenter);
-        }
-        ui->mainToolBar->removeAction(ui->actionLayoutLogging);
-        ui->mainToolBar->removeAction(ui->actionLayoutEditing);
-        ui->mainToolBar->removeAction(ui->actionLayoutEffects);
-        ui->mainToolBar->removeAction(ui->actionLayoutColor);
-        ui->mainToolBar->removeAction(ui->actionLayoutAudio);
-        ui->mainToolBar->removeAction(ui->actionLayoutPlayer);
-    } else {
-        auto layoutSwitcher = findChild<QWidget *>(kLayoutSwitcherName);
-        if (layoutSwitcher) {
-            layoutSwitcher->hide();
-            for (const auto &child : layoutSwitcher->findChildren<QToolButton *>()) {
-                child->hide();
-            }
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutLogging);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutEditing);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutEffects);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutColor);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutAudio);
-            ui->mainToolBar->insertAction(ui->dummyAction, ui->actionLayoutPlayer);
-        }
-    }
+    if (auto *layoutSwitcher = findChild<QWidget *>(kLayoutSwitcherName))
+        layoutSwitcher->hide();
+    ui->mainToolBar->removeAction(ui->actionLayoutLogging);
+    ui->mainToolBar->removeAction(ui->actionLayoutEditing);
+    ui->mainToolBar->removeAction(ui->actionLayoutEffects);
+    ui->mainToolBar->removeAction(ui->actionLayoutColor);
+    ui->mainToolBar->removeAction(ui->actionLayoutAudio);
+    ui->mainToolBar->removeAction(ui->actionLayoutPlayer);
 }
 
 void MainWindow::clearCurrentLayout()
