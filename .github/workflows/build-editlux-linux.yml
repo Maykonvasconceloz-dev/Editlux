@@ -25,13 +25,12 @@ jobs:
             echo "SHOTCUT_VERSION=\"$VERSION\""
             echo 'SHOTCUT_HEAD=0'
             echo "SHOTCUT_REVISION=\"$GITHUB_SHA\""
-            echo 'SHOTCUT_REPO=/root/editlux-source'
+            echo "SHOTCUT_REPO=https://github.com/$GITHUB_REPOSITORY.git"
             echo 'ENABLE_WHISPERCPP=0'
             echo 'ENABLE_RNNOISE=0'
           } > scripts/build-shotcut.conf
           docker run --rm \
             -v "$GITHUB_WORKSPACE/scripts:/root/shotcut" \
-            -v "$GITHUB_WORKSPACE:/root/editlux-source:ro" \
             "$IMAGE_NAME"
           mv scripts/editlux.txz "scripts/editlux-linux-x86_64-$VERSION.txz"
           mv scripts/src.txz "scripts/editlux-source-$VERSION.txz"
