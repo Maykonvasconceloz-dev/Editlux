@@ -28,10 +28,13 @@ Rectangle {
     id: root
 
     property int headerWidth: multitrack.trackHeaderWidth
-    property color selectedTrackColor: Qt.rgba(0.8, 0.8, 0, 0.3)
+    property color selectedTrackColor: Qt.rgba(34 / 255, 184 / 255, 170 / 255, 0.22)
     property alias trackCount: tracksRepeater.count
     property bool stopScrolling: false
-    property color shotcutBlue: Qt.rgba(23 / 255, 92 / 255, 118 / 255, 1)
+    property color shotcutBlue: "#287f78"
+    property color editluxAudio: "#5066a8"
+    property color editluxTransition: "#9a6c4a"
+    property color editluxSelection: "#62d9ce"
     property var dragDelta
 
     signal clipClicked
