@@ -462,15 +462,14 @@ void MainWindow::setupEditluxToolbar()
     brand->setStyleSheet(QStringLiteral("font-size: 17px; padding: 0 8px;"));
     ui->mainToolBar->addWidget(brand);
 
-    const auto addCategory = [this](const QString &text,
-                                    const QIcon &icon,
-                                    const std::function<void()> &handler) {
-        auto *action = new QAction(icon, text, this);
-        action->setToolTip(text);
-        connect(action, &QAction::triggered, this, [handler](bool) { handler(); });
-        ui->mainToolBar->addAction(action);
-        return action;
-    };
+    const auto addCategory =
+        [this](const QString &text, const QIcon &icon, const std::function<void()> &handler) {
+            auto *action = new QAction(icon, text, this);
+            action->setToolTip(text);
+            connect(action, &QAction::triggered, this, [handler](bool) { handler(); });
+            ui->mainToolBar->addAction(action);
+            return action;
+        };
     const auto showLeftDock = [this](QDockWidget *dock) {
         if (width() < 1280)
             m_propertiesDock->hide();
@@ -489,13 +488,11 @@ void MainWindow::setupEditluxToolbar()
     };
 
     addCategory(tr("Media"),
-                QIcon::fromTheme(
-                    "view-media-playlist",
-                    QIcon(":/icons/oxygen/32x32/actions/view-media-playlist.png")),
+                QIcon::fromTheme("view-media-playlist",
+                                 QIcon(":/icons/oxygen/32x32/actions/view-media-playlist.png")),
                 [this, showLeftDock]() { showLeftDock(m_playlistDock); });
     addCategory(tr("Audio"),
-                QIcon::fromTheme("speaker",
-                                 QIcon(":/icons/oxygen/32x32/actions/speaker.png")),
+                QIcon::fromTheme("speaker", QIcon(":/icons/oxygen/32x32/actions/speaker.png")),
                 [this, showLeftDock]() {
                     m_elementsDock->selectPage(ElementsDock::Page::Sounds);
                     showLeftDock(m_elementsDock);
@@ -530,8 +527,7 @@ void MainWindow::setupEditluxToolbar()
                     showLeftDock(m_elementsDock);
                 });
     addCategory(tr("Subtitles"),
-                QIcon::fromTheme("subtitle",
-                                 QIcon(":/icons/oxygen/32x32/actions/subtitle.png")),
+                QIcon::fromTheme("subtitle", QIcon(":/icons/oxygen/32x32/actions/subtitle.png")),
                 [this, showLeftDock]() { showLeftDock(m_subtitlesDock); });
     addCategory(tr("Filters"),
                 QIcon::fromTheme("color-picker",
@@ -542,8 +538,7 @@ void MainWindow::setupEditluxToolbar()
                     showRightDock(m_filtersDock);
                 });
     addCategory(tr("Adjustments"),
-                QIcon::fromTheme("configure",
-                                 QIcon(":/icons/oxygen/32x32/actions/chronometer.png")),
+                QIcon::fromTheme("configure", QIcon(":/icons/oxygen/32x32/actions/chronometer.png")),
                 [this, showRightDock]() {
                     m_filterController->metadataModel()->setFilter(MetadataModel::VideoFilter);
                     m_filterController->metadataModel()->setSearch(QStringLiteral("#color"));
@@ -558,8 +553,8 @@ void MainWindow::setupEditluxToolbar()
     if (redoAction)
         ui->mainToolBar->addAction(redoAction);
     ui->mainToolBar->addAction(ui->actionEncode);
-    if (auto *button = qobject_cast<QToolButton *>(ui->mainToolBar->widgetForAction(
-            ui->actionEncode))) {
+    if (auto *button = qobject_cast<QToolButton *>(
+            ui->mainToolBar->widgetForAction(ui->actionEncode))) {
         button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
         button->setStyleSheet(QStringLiteral(
             "QToolButton { background:#00a6d8; color:#ffffff; border-radius:6px; "
@@ -580,7 +575,10 @@ void MainWindow::applyEditluxDefaultLayout()
     for (auto *dock : findChildren<QDockWidget *>())
         dock->hide();
 
-    const QList<QDockWidget *> leftDocks{m_playlistDock, m_filesDock, m_elementsDock, m_subtitlesDock};
+    const QList<QDockWidget *> leftDocks{m_playlistDock,
+                                         m_filesDock,
+                                         m_elementsDock,
+                                         m_subtitlesDock};
     const QList<QDockWidget *> rightDocks{m_propertiesDock, m_filtersDock, m_encodeDock};
     for (auto *dock : leftDocks) {
         removeDockWidget(dock);
@@ -3415,10 +3413,10 @@ void MainWindow::buildVideoModeMenu(QMenu *topMenu,
     menu->addAction(addProfile(group, tr("YouTube 16:9 - 1080p 30 fps"), "atsc_1080p_30"));
     menu->addAction(addProfile(group, tr("YouTube 16:9 - 1080p 60 fps"), "atsc_1080p_60"));
     menu->addSeparator();
-    menu->addAction(addProfile(group, tr("Instagram / Reels 9:16 - 1080p 30 fps"),
-                               "vertical_hd_30"));
-    menu->addAction(addProfile(group, tr("Instagram / Reels 9:16 - 1080p 60 fps"),
-                               "vertical_hd_60"));
+    menu->addAction(
+        addProfile(group, tr("Instagram / Reels 9:16 - 1080p 30 fps"), "vertical_hd_30"));
+    menu->addAction(
+        addProfile(group, tr("Instagram / Reels 9:16 - 1080p 60 fps"), "vertical_hd_60"));
     topMenu->addSeparator();
     menu = topMenu;
     menu->addAction(addProfile(group, "HD 1080p 24 fps", "atsc_1080p_24"));
