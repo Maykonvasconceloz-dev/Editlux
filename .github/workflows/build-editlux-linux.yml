@@ -2,14 +2,24 @@ name: build-editlux-linux
 
 on:
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Existing successful portable workflow run ID to reuse
+        required: false
+        type: string
   push:
     branches: [main, master]
+
+permissions:
+  actions: read
+  contents: read
 
 env:
   IMAGE_NAME: mltframework/shotcut-build:qt6.10.3-ubuntu22.04
 
 jobs:
   portable:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.source_run_id == '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -50,17 +60,20 @@ jobs:
   appimage:
     runs-on: ubuntu-latest
     needs: portable
+    if: ${{ always() && (needs.portable.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.source_run_id != '')) }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/download-artifact@v6
         with:
           name: editlux-linux-portable
           path: dist
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ (github.event_name == 'workflow_dispatch' && inputs.source_run_id) || github.run_id }}
 
       - name: Package AppImage
         run: |
           sudo apt-get update
-          sudo apt-get install -y desktop-file-utils libfuse2
+          sudo apt-get install -y desktop-file-utils imagemagick libfuse2
           cp dist/scripts/editlux-linux-x86_64-*.txz scripts/
           mkdir -p packaging/linux/Editlux
           cp dist/VERSION packaging/linux/Editlux/VERSION
