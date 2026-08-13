@@ -48,7 +48,7 @@ Rectangle {
     property int group: -1
     property bool isTrackMute: false
     property bool elided: (width < 15) || (x + width < tracksFlickable.contentX) || (x > tracksFlickable.contentX + tracksFlickable.width) || (y + height < 0) || (y > tracksFlickable.contentY + tracksFlickable.contentHeight)
-    property color clipColor: isBlank ? 'transparent' : isTransition ? 'mediumpurple' : isAudio ? 'darkseagreen' : root.shotcutBlue
+    property color clipColor: isBlank ? 'transparent' : isTransition ? root.editluxTransition : isAudio ? root.editluxAudio : root.shotcutBlue
 
     signal clicked(var clip, var mouse)
     signal clipRightClicked(var clip, var mouse)
@@ -114,7 +114,7 @@ Rectangle {
             return 'image://thumbnail/' + hash + '/' + mltService + '/' + clipResource + '#' + time;
     }
 
-    border.color: (selected || Drag.active || trackIndex != originalTrackIndex) ? group < 0 ? 'red' : 'white' : 'black'
+    border.color: (selected || Drag.active || trackIndex != originalTrackIndex) ? root.editluxSelection : Qt.darker(clipColor, 1.35)
     border.width: (isBlank && !selected) ? 0 : 1
     clip: true
     Drag.active: mouseArea.drag.active
@@ -344,7 +344,7 @@ Rectangle {
     }
 
     Shotcut.TimelineTransition {
-        property var color: isAudio ? 'darkseagreen' : root.shotcutBlue
+        property var color: isAudio ? root.editluxAudio : root.shotcutBlue
 
         visible: !elided && isTransition
         anchors.fill: parent
