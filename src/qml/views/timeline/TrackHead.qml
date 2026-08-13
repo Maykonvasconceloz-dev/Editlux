@@ -43,7 +43,7 @@ Rectangle {
     }
 
     color: selected ? selectedTrackColor : (index % 2) ? activePalette.alternateBase : activePalette.base
-    border.color: selected ? 'red' : 'transparent'
+    border.color: selected ? root.editluxSelection : 'transparent'
     border.width: selected ? 1 : 0
     clip: true
     state: 'normal'
@@ -54,7 +54,7 @@ Rectangle {
 
             PropertyChanges {
                 target: trackHeadRoot
-                color: isVideo ? root.shotcutBlue : 'darkseagreen'
+                color: isVideo ? root.shotcutBlue : root.editluxAudio
             }
         },
         State {
